@@ -1,6 +1,7 @@
 import java.io.File;
 import java.io.FileNotFoundException;
-
+import java.util.*;
+import java.util.stream.Collectors;
 
 
 // DO NOT USE EVALUATE-FUNCTIONS OF AGENTS WITHIN MEDIATOR OR NEGOTIATION!
@@ -9,7 +10,8 @@ import java.io.FileNotFoundException;
 
 public class Negotiation {
 		//Parameter of negotiation
-		public static int maxRounds = 10;
+		public static int maxRounds = 20;
+		public static int populationSize = 10;
 		
 		public static void main(String[] args) {
 			int[] contract, proposal;
@@ -36,15 +38,68 @@ public class Negotiation {
 						agB       = new CustomerAdvanced(new File(inCu200[j])); 
 						med       = new Mediator(agA.getContractSize(), agB.getContractSize());
 						contract  = med.initContract();
+						int [] contractA = med.initContract();
+						int [] contractB = med.initContract();
 						output(agA, agB, 0, contract);
 						
-						for(int round=1;round<maxRounds;round++) {					//Mediator				
-							proposal = med.constructProposal(contract);
+						for(int round=1;round<maxRounds;round++) {
+							List<int[]> population;
+							if(round == 1) {
+								population = med.generatePopulation(contract, 10);
+							}
+							else{
+								population = med.generatePopulationFromContracts(contract, contractA, contractB, 10);
+							}
+
+							List<int[]> preferredByA = new ArrayList<>();
+							List<int[]> preferredByB = new ArrayList<>();
+
+							//Narrow down the contracts to those that are better than the current solution for each agent
+							for (int[] candidate : population) {
+								if (agA.vote(contract, candidate)) preferredByA.add(candidate);
+								if (agB.vote(contract, candidate)) preferredByB.add(candidate);
+							}
+
+							if(preferredByA.isEmpty() && preferredByB.isEmpty()){
+								System.out.println(round + " No preferred proposals this round by either agent, skipping");
+								continue;
+							}
+
+							final Agent agentA = agA;
+							final Agent agentB = agB;
+
+							// Rank preferredByA using agent A's votes
+							preferredByA.sort((c1, c2) -> {
+								if (Arrays.equals(c1, c2)) return 0;
+								return agentA.vote(c2, c1) ? -1 : 1; // If agent A prefers c1 over c2, c1 comes first
+							});
+
+							// Rank preferredByB using agent B's votes
+							preferredByB.sort((c1, c2) -> {
+								if (Arrays.equals(c1, c2)) return 0;
+								return agentB.vote(c2, c1) ? -1 : 1; // If agent B prefers c1 over c2, c1 comes first
+							});
+
+							if(!preferredByA.isEmpty()) contractA = preferredByA.getFirst();
+							if(!preferredByB.isEmpty()) contractB = preferredByB.getFirst();
+
+							List<int[]> mutuallyPreferred = preferredByA.stream()
+									.filter(a -> preferredByB.stream().anyMatch(b -> Arrays.equals(a, b)))
+									.toList();
+
+							proposal = med.rouletteWheelSelectionB(mutuallyPreferred, preferredByA, preferredByB, contract);
+
+							//System.out.println("Selecting proposal using roulette wheel...");
+							//proposal = med.rouletteWheelSelection(preferredByA, preferredByB);
+
 							voteA    = agA.vote(contract, proposal);            //Autonomie + Private Infos
 							voteB    = agB.vote(contract, proposal);
 							if(voteA && voteB ) {
 								contract = proposal;
 								output(agA, agB, round, contract);
+							}
+							else{
+								System.out.println(round + " solution not selected this round");
 							}
 						}			
 					}
@@ -62,4 +117,6 @@ public class Negotiation {
 			a2.printUtility(contract);
 			System.out.println();
 		}
+
+
 }
