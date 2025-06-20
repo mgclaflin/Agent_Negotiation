@@ -1,7 +1,6 @@
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
-import java.util.stream.Collectors;
 
 
 // DO NOT USE EVALUATE-FUNCTIONS OF AGENTS WITHIN MEDIATOR OR NEGOTIATION!
@@ -87,7 +86,7 @@ public class Negotiation {
 									.filter(a -> preferredByB.stream().anyMatch(b -> Arrays.equals(a, b)))
 									.toList();
 
-							proposal = med.rouletteWheelSelectionB(mutuallyPreferred, preferredByA, preferredByB, contract);
+							proposal = med.rouletteWheelSelectionC(mutuallyPreferred, preferredByA, preferredByB, contract);
 
 							//System.out.println("Selecting proposal using roulette wheel...");
 							//proposal = med.rouletteWheelSelection(preferredByA, preferredByB);

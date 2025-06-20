@@ -244,7 +244,34 @@ public class Mediator {
 		return rouletteWheel.get(selectedIndex);
 	}
 
+	// Roulette Wheel Selection A: Classic Weighted Roulette Wheel
+	public int[] rouletteWheelSelectionA(List<int[]> mutuallyPreferred, List<int[]> preferredByA, List<int[]> preferredByB, int[] currentContract) {
+		// Ignore mutuallyPreferred and currentContract for this method
+		List<int[]> rouletteWheel = new ArrayList<>();
+		int maxWeightA = preferredByA.size();
+		int maxWeightB = preferredByB.size();
+		for (int i = 0; i < preferredByA.size(); i++) {
+			int weight = maxWeightA - i;
+			int[] contract = preferredByA.get(i);
+			for (int j = 0; j < weight; j++) {
+				rouletteWheel.add(contract);
+			}
+		}
+		for (int i = 0; i < preferredByB.size(); i++) {
+			int weight = maxWeightB - i;
+			int[] contract = preferredByB.get(i);
+			for (int j = 0; j < weight; j++) {
+				rouletteWheel.add(contract);
+			}
+		}
+		if (rouletteWheel.isEmpty()) {
+			return initContract();
+		}
+		int selectedIndex = rand.nextInt(rouletteWheel.size());
+		return rouletteWheel.get(selectedIndex);
+	}
 
+	// Roulette Wheel Selection B: mutually preferred, score-based selection
 	public int[] rouletteWheelSelectionB(List<int[]> mutuallyPreferred, List<int[]> preferredByA, List<int[]> preferredByB, int[] currentContract) {
 		if (mutuallyPreferred.isEmpty()) return currentContract;
 
@@ -286,5 +313,32 @@ public class Mediator {
 		return currentContract;
 	}
 
+	// Roulette Wheel Selection C: Softmax Probability Selection
+	public int[] rouletteWheelSelectionC(List<int[]> mutuallyPreferred, List<int[]> preferredByA, List<int[]> preferredByB, int[] currentContract) {
+		if (mutuallyPreferred.isEmpty()) return currentContract;
+		double temperature = 1.0; // Can be tuned
+		List<Double> expScores = new ArrayList<>();
+		double sumExp = 0.0;
+		for (int[] contract : mutuallyPreferred) {
+			int rankA = preferredByA.indexOf(contract);
+			int rankB = preferredByB.indexOf(contract);
+			int score = 0;
+			if (rankA >= 0) score += (rankA + 1);
+			if (rankB >= 0) score += (rankB + 1);
+			// Lower score = better, so use negative for softmax
+			double expScore = Math.exp(-score / temperature);
+			expScores.add(expScore);
+			sumExp += expScore;
+		}
+		double randVal = Math.random() * sumExp;
+		double cumulative = 0.0;
+		for (int i = 0; i < mutuallyPreferred.size(); i++) {
+			cumulative += expScores.get(i);
+			if (cumulative >= randVal) {
+				return mutuallyPreferred.get(i);
+			}
+		}
+		return currentContract;
+	}
 
 }
