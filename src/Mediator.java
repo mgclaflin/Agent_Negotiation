@@ -54,7 +54,7 @@ public class Mediator {
 				default -> bestB;
 			};
 
-			int[] child = crossover(parent1, parent2);
+			int[] child = crossover3(parent1, parent2);
 			mutate(child); // Optional: include mutation logic
 			population.add(child);
 		}
@@ -62,8 +62,98 @@ public class Mediator {
 		return population;
 	}
 
+	public int[] crossover1(int[] parent1, int[] parent2){
+		if (parent1.length != parent2.length) {
+			throw new IllegalArgumentException("Parent arrays must be the same length.");
+		}
 
-	public int[] crossover(int[] parent1, int[] parent2) {
+		int length = parent1.length;
+		int[] child = new int[length];
+		Arrays.fill(child, -1);
+
+		//Step 1: Choose 1 crossover point
+		Random rand = new Random();
+		int point = rand.nextInt(length);
+
+		//Copy segments from parents
+		copySegment(child, parent1, 0, point);
+		copySegment(child,parent2, point, length);
+
+		// Step 3: Resolve duplicates and fill in missing values
+		boolean[] used = new boolean[length];
+		for (int val : child) {
+			if (val >= 0) used[val] = true;
+		}
+
+		// Collect missing values
+		List<Integer> missing = new ArrayList<>();
+		for (int i = 0; i < length; i++) {
+			if (!used[i]) missing.add(i);
+		}
+
+		// Replace duplicates with missing values
+		Set<Integer> seen = new HashSet<>();
+		int missingIndex = 0;
+		for (int i = 0; i < length; i++) {
+			if (seen.contains(child[i])) {
+				child[i] = missing.get(missingIndex++);
+			} else {
+				seen.add(child[i]);
+			}
+		}
+
+		return child;
+	}
+
+	public int[] crossover2(int[] parent1, int[] parent2){
+		if (parent1.length != parent2.length) {
+			throw new IllegalArgumentException("Parent arrays must be the same length.");
+		}
+
+		int length = parent1.length;
+		int[] child = new int[length];
+		Arrays.fill(child, -1);
+
+		// Step 2: Choose 2 crossover points
+		Random rand = new Random();
+		int[] points = new int[3];
+		for (int i = 0; i < 2; i++) points[i] = rand.nextInt(length);
+		Arrays.sort(points); // ensure increasing order
+		int p1 = points[0], p2 = points[1];
+
+		// Step 2: Copy segments from parents
+		copySegment(child, parent1, 0, p1);
+		copySegment(child, parent2, p1, p2);
+		copySegment(child, parent1, p2, length);
+
+
+		// Step 3: Resolve duplicates and fill in missing values
+		boolean[] used = new boolean[length];
+		for (int val : child) {
+			if (val >= 0) used[val] = true;
+		}
+
+		// Collect missing values
+		List<Integer> missing = new ArrayList<>();
+		for (int i = 0; i < length; i++) {
+			if (!used[i]) missing.add(i);
+		}
+
+		// Replace duplicates with missing values
+		Set<Integer> seen = new HashSet<>();
+		int missingIndex = 0;
+		for (int i = 0; i < length; i++) {
+			if (seen.contains(child[i])) {
+				child[i] = missing.get(missingIndex++);
+			} else {
+				seen.add(child[i]);
+			}
+		}
+
+		return child;
+	}
+
+	public int[] crossover3(int[] parent1, int[] parent2) {
 		if (parent1.length != parent2.length) {
 			throw new IllegalArgumentException("Parent arrays must be the same length.");
 		}
