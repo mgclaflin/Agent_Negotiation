@@ -11,7 +11,7 @@ import java.util.stream.Collectors;
 public class Negotiation {
 		//Parameter of negotiation
 		public static int maxRounds = 20;
-		public static int populationSize = 10;
+		public static int populationSize = 15;
 		
 		public static void main(String[] args) {
 			int[] contract, proposal;
@@ -45,10 +45,10 @@ public class Negotiation {
 						for(int round=1;round<maxRounds;round++) {
 							List<int[]> population;
 							if(round == 1) {
-								population = med.generatePopulation(contract, 10);
+								population = med.generatePopulation(contract, populationSize);
 							}
 							else{
-								population = med.generatePopulationFromContracts(contract, contractA, contractB, 10);
+								population = med.generatePopulationFromContracts(contract, contractA, contractB, populationSize);
 							}
 
 							List<int[]> preferredByA = new ArrayList<>();
