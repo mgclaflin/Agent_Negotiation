@@ -1,5 +1,9 @@
+package agents;
+
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.Scanner;
 
 public class CustomerAdvanced extends Agent {
@@ -39,6 +43,12 @@ public class CustomerAdvanced extends Agent {
 
 	public void printUtility(int[] contract) {
 		System.out.print(evaluate(contract));
+	}
+
+	@Override
+	public void printUtility(int[] contract, FileWriter writer) throws IOException {
+		int utility = evaluate(contract);
+		writer.write(String.valueOf(utility));
 	}
 
 	private void calculateDelay(int jobNr) {

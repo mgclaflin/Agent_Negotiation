@@ -1,7 +1,15 @@
+package negotiation;
+
+import agents.Agent;
+import agents.CustomerAdvanced;
+import agents.SupplierAgent;
+import out.CsvOutputStrategy;
+import out.OutputStrategy;
+import out.PrintOutputStrategy;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.*;
-import java.util.stream.Collectors;
 
 
 // DO NOT USE EVALUATE-FUNCTIONS OF AGENTS WITHIN MEDIATOR OR NEGOTIATION!
@@ -10,8 +18,10 @@ import java.util.stream.Collectors;
 
 public class Negotiation {
 		//Parameter of negotiation
-		public static int maxRounds = 20;
+		public static int maxRounds = 100_000;
 		public static int populationSize = 10;
+
+		public static OutputStrategy out = new CsvOutputStrategy("data/bitflip_100_10_test_1.csv");
 		
 		public static void main(String[] args) {
 			int[] contract, proposal;
@@ -20,27 +30,39 @@ public class Negotiation {
 			boolean voteA, voteB;
 
 			try{	
-				String[] inSu200 = new String[4];
-				String[] inCu200 = new String[4];
+				String[] inSu200 = new String[1];
+				String[] inCu200 = new String[1];
+				//inSu200[0] = "data/daten3ASupplier_200.txt";
+				//inSu200[1] = "data/daten3BSupplier_200.txt";
+				//inSu200[2] = "data/daten4ASupplier_200.txt";
+				//inSu200[3] = "data/daten4BSupplier_200.txt";
+				//inCu200[0] = "data/daten3ACustomer_200_10.txt";
+				//inCu200[1] = "data/daten3BCustomer_200_20.txt";
+				//inCu200[2] = "data/daten4ACustomer_200_5.txt";
+				//inCu200[3] = "data/daten4BCustomer_200_5.txt";
+
 				inSu200[0] = "data/daten3ASupplier_200.txt";
-				inSu200[1] = "data/daten3BSupplier_200.txt";
-				inSu200[2] = "data/daten4ASupplier_200.txt";
-				inSu200[3] = "data/daten4BSupplier_200.txt";
 				inCu200[0] = "data/daten3ACustomer_200_10.txt";
-				inCu200[1] = "data/daten3BCustomer_200_20.txt";
-				inCu200[2] = "data/daten4ACustomer_200_5.txt";
-				inCu200[3] = "data/daten4BCustomer_200_5.txt";
-				
+
+				//inSu200[0]= "data/daten3BSupplier_200.txt";
+				//inCu200[0] = "data/daten3BCustomer_200_20.txt";
+
+				//inSu200[0] = "data/daten4ASupplier_200.txt";
+				//inCu200[0] = "data/daten4ACustomer_200_5.txt";
+
+				//inSu200[0] = "data/daten4BSupplier_200.txt";
+				//inCu200[0] = "data/daten4BCustomer_200_5.txt";
+
 				for(int i=0;i<inSu200.length;i++) {
 					for(int j=0;j<inCu200.length;j++) {
 						System.out.println("Instance: " + i + " " + j);
-						agA       = new SupplierAgent   (new File(inSu200[i]));
-						agB       = new CustomerAdvanced(new File(inCu200[j])); 
+						agA       = new SupplierAgent(new File(inSu200[i]));
+						agB       = new CustomerAdvanced(new File(inCu200[j]));
 						med       = new Mediator(agA.getContractSize(), agB.getContractSize());
 						contract  = med.initContract();
 						int [] contractA = med.initContract();
 						int [] contractB = med.initContract();
-						output(agA, agB, 0, contract);
+						out.output(agA, agB, 0, contract);
 						
 						for(int round=1;round<maxRounds;round++) {
 							List<int[]> population;
@@ -61,7 +83,7 @@ public class Negotiation {
 							}
 
 							if(preferredByA.isEmpty() && preferredByB.isEmpty()){
-								System.out.println(round + " No preferred proposals this round by either agent, skipping");
+								//System.out.println(round + " No preferred proposals this round by either agent, skipping");
 								continue;
 							}
 
@@ -96,11 +118,11 @@ public class Negotiation {
 							voteB    = agB.vote(contract, proposal);
 							if(voteA && voteB ) {
 								contract = proposal;
-								output(agA, agB, round, contract);
+								out.output(agA, agB, round, contract);
 							}
-							else{
-								System.out.println(round + " solution not selected this round");
-							}
+//							else{
+//								System.out.println(round + " solution not selected this round");
+//							}
 						}			
 					}
 				}
@@ -108,14 +130,6 @@ public class Negotiation {
 			catch(FileNotFoundException e){
 				System.out.println(e.getMessage());
 			}
-		}
-		
-		public static void output(Agent a1, Agent a2, int i, int[] contract){
-			System.out.print(i + " -> " );
-			a1.printUtility(contract);
-			System.out.print("  ");
-			a2.printUtility(contract);
-			System.out.println();
 		}
 
 

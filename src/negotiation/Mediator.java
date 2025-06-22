@@ -1,3 +1,5 @@
+package negotiation;
+
 import java.io.*;
 import java.util.*;
 
@@ -5,18 +7,18 @@ public class Mediator {
 
 	int contractSize;
 	Random rand = new Random();
-	
+
 	public Mediator(int contractSizeA, int contractSizeB) throws FileNotFoundException{
 		if(contractSizeA != contractSizeB){
 			throw new FileNotFoundException("Verhandlung kann nicht durchgefuehrt werden, da Problemdaten nicht kompatibel");
 		}
 		this.contractSize = contractSizeA;
 	}
-	
+
 	public int[] initContract(){
 		int[] contract = new int[contractSize];
 		for(int i=0;i<contractSize;i++)contract[i] = i;
-		
+
 		for(int i=0;i<contractSize;i++) {
 			int index1 = (int)(Math.random()*contractSize);
 			int index2 = (int)(Math.random()*contractSize);
@@ -24,7 +26,7 @@ public class Mediator {
 			contract[index1] = contract[index2];
 			contract[index2] = wertindex1;
 		}
-		
+
 		return contract;
 	}
 
@@ -125,10 +127,26 @@ public class Mediator {
 
 	public void mutate(int[] contract) {
 		double choice = Math.random();
-		if (choice < 0.33) constructProposal_SWAP(contract);
-		else if (choice < 0.66) constructProposal_SHIFT(contract);
+
+		if(choice < 0.5) constructProposal_BITFLIP_INPLACE(contract, 1);
 		else constructProposal_REVERSE(contract);
+		//if (choice < 0.33) constructProposal_SWAP(contract);
+		//else if (choice < 0.66) constructProposal_SHIFT(contract);
+		//if (choice < 0.33) constructProposal_REVERSE(contract);
 	}
+
+	public void constructProposal_BITFLIP_INPLACE(int[] contract, int n) {
+		for (int i = 0; i < n; i++) {
+			int index1 = rand.nextInt(contract.length);
+			int index2 = rand.nextInt(contract.length);
+			// Swap values at index1 and index2
+			int temp = contract[index1];
+			contract[index1] = contract[index2];
+			contract[index2] = temp;
+		}
+	}
+
+
 
 	public void constructProposal_REVERSE(int[] contract) {
 		int index1 = rand.nextInt(contract.length);
@@ -151,23 +169,23 @@ public class Mediator {
 
 	public int[] constructProposal_SWAP(int[] contract) {
 		int[] proposal = new int[contract.length];
-		for(int i=0;i<proposal.length;i++)proposal[i] = contract[i];
+		System.arraycopy(contract, 0, proposal, 0, proposal.length);
 
 		int element = (int)((proposal.length-1)*Math.random());
 		int wert1   = proposal[element];
 		int wert2   = proposal[element+1];
 		proposal[element]   = wert2;
 		proposal[element+1] = wert1;
-		
+
 		check(proposal);
-		
+
 		return proposal;
 	}
-	
+
 	public int[] constructProposal_SHIFT(int[] contract) {
 		int[] proposal = new int[contractSize];
-		for(int i=0;i<proposal.length;i++)proposal[i] = contract[i];
-		
+		System.arraycopy(contract, 0, proposal, 0, proposal.length);
+
 		int index1 = (int)((proposal.length-1)*Math.random());
 		int index2 = (int)((proposal.length-1)*Math.random());
 		if(index1 > index2) {
@@ -192,7 +210,7 @@ public class Mediator {
 		check(proposal);
 		return proposal;
 	}
-	
+
 	public void check(int[] proposal) {
 		int sum = 0;
 		int summe = proposal.length*(proposal.length-1)/2;
