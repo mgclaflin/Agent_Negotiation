@@ -1,6 +1,7 @@
 package negotiation;
 
 import java.io.*;
+import java.net.ContentHandler;
 import java.util.*;
 
 public class Mediator {
@@ -30,38 +31,92 @@ public class Mediator {
 		return contract;
 	}
 
-	public List<int[]> generatePopulation(int[] baseContract, int count) {
-		List<int[]> population = new ArrayList<>();
+	public List<Contract> generatePopulation(Contract baseContract, int count) {
+		List<Contract> population = new ArrayList<>();
 		for (int i = 0; i < count; i++) {
-			int[] copy = Arrays.copyOf(baseContract, baseContract.length);
+			Contract copy = new Contract(Arrays.copyOf(baseContract.contract, baseContract.contract.length));
 			mutate(copy);
 			population.add(copy);
 		}
 		return population;
 	}
 
-	public List<int[]> generatePopulationFromContracts(int[] base, int[] bestA, int[] bestB, int size) {
-		List<int[]> population = new ArrayList<>();
+	public List<Contract> generatePopulationFromContracts(Contract base, Contract bestA, Contract bestB, int size) {
+		List<Contract> population = new ArrayList<>();
 		Random rand = new Random();
 
 		for (int i = 0; i < size; i++) {
-			int[] parent1 = switch (rand.nextInt(3)) {
+			Contract parent1 = switch (rand.nextInt(3)) {
 				case 0 -> base;
 				case 1 -> bestA;
 				default -> bestB;
 			};
-			int[] parent2 = switch (rand.nextInt(3)) {
+			Contract parent2 = switch (rand.nextInt(3)) {
 				case 0 -> base;
 				case 1 -> bestA;
 				default -> bestB;
 			};
 
-			int[] child = crossover(parent1, parent2);
+			Contract child = new Contract(crossover3(parent1.contract, parent2.contract));
 			mutate(child); // Optional: include mutation logic
 			population.add(child);
 		}
 
 		return population;
+	}
+
+	public int[] crossover3(int[] parent1, int[] parent2) {
+		if (parent1.length != parent2.length) {
+			throw new IllegalArgumentException("Parent arrays must be the same length.");
+		}
+
+		int length = parent1.length;
+		int[] child = new int[length];
+		Arrays.fill(child, -1);
+
+		// Step 1: Choose 3 crossover points
+		Random rand = new Random();
+		int[] points = new int[3];
+		for (int i = 0; i < 3; i++) points[i] = rand.nextInt(length);
+		Arrays.sort(points); // ensure increasing order
+		int p1 = points[0], p2 = points[1], p3 = points[2];
+
+		// Step 2: Copy segments alternatively from parent1 and parent2
+		// Segments: [0..p1), [p1..p2), [p2..p3), [p3..end)
+
+		// Segment 1 from parent1
+		copySegment(child, parent1, 0, p1);
+		// Segment 2 from parent2
+		copySegment(child, parent2, p1, p2);
+		// Segment 3 from parent1
+		copySegment(child, parent1, p2, p3);
+		// Segment 4 from parent2
+		copySegment(child, parent2, p3, length);
+
+		// Step 3: Resolve duplicates and fill in missing values
+		boolean[] used = new boolean[length];
+		for (int val : child) {
+			if (val >= 0) used[val] = true;
+		}
+
+		// Collect missing values
+		List<Integer> missing = new ArrayList<>();
+		for (int i = 0; i < length; i++) {
+			if (!used[i]) missing.add(i);
+		}
+
+		// Replace duplicates with missing values
+		Set<Integer> seen = new HashSet<>();
+		int missingIndex = 0;
+		for (int i = 0; i < length; i++) {
+			if (seen.contains(child[i])) {
+				child[i] = missing.get(missingIndex++);
+			} else {
+				seen.add(child[i]);
+			}
+		}
+
+		return child;
 	}
 
 
@@ -125,14 +180,33 @@ public class Mediator {
 		}
 	}
 
-	public void mutate(int[] contract) {
+	public void mutate(Contract contract) {
 		double choice = Math.random();
 
-		if(choice < 0.5) constructProposal_BITFLIP_INPLACE(contract, 1);
-		else constructProposal_REVERSE(contract);
-		//if (choice < 0.33) constructProposal_SWAP(contract);
-		//else if (choice < 0.66) constructProposal_SHIFT(contract);
-		//if (choice < 0.33) constructProposal_REVERSE(contract);
+		if(choice < 0.7) {
+			constructProposal_BITFLIP_INPLACE(contract.contract, 1);
+			contract.setMutationType(MutationType.BIT_FLIP);
+		}
+
+		choice = Math.random();
+
+		if (choice < 0.05) {
+			constructProposal_REVERSE(contract.contract);
+			contract.setMutationType(MutationType.REVERSE);
+		}
+		choice = Math.random();
+
+		if (choice < 0.30) {
+			constructProposal_SWAP(contract.contract);
+			contract.setMutationType(MutationType.SWAP);
+		}
+
+		choice = Math.random();
+
+		if( choice < 0.50){
+			constructProposal_SHIFT(contract.contract);
+			contract.setMutationType(MutationType.SHIFT);
+		}
 	}
 
 	public void constructProposal_BITFLIP_INPLACE(int[] contract, int n) {
@@ -263,12 +337,12 @@ public class Mediator {
 	}
 
 
-	public int[] rouletteWheelSelectionB(List<int[]> mutuallyPreferred, List<int[]> preferredByA, List<int[]> preferredByB, int[] currentContract) {
+	public Contract rouletteWheelSelectionB(List<Contract> mutuallyPreferred, List<Contract> preferredByA, List<Contract> preferredByB, Contract currentContract) {
 		if (mutuallyPreferred.isEmpty()) return currentContract;
 
 		// Score each contract based on rankings in preferredByA and preferredByB
-		Map<int[], Integer> scores = new HashMap<>();
-		for (int[] contract : mutuallyPreferred) {
+		Map<Contract, Integer> scores = new HashMap<>();
+		for (Contract contract : mutuallyPreferred) {
 			int rankA = preferredByA.indexOf(contract);
 			int rankB = preferredByB.indexOf(contract);
 			int score = 0;
@@ -294,7 +368,7 @@ public class Mediator {
 		int randomValue = (int)(Math.random() * totalScore);
 
 		int runningSum = 0;
-		for (Map.Entry<int[], Integer> entry : scores.entrySet()) {
+		for (Map.Entry<Contract, Integer> entry : scores.entrySet()) {
 			runningSum += entry.getValue();
 			if (runningSum >= randomValue) {
 				return entry.getKey();
@@ -303,6 +377,35 @@ public class Mediator {
 		// fallback (should not happen)
 		return currentContract;
 	}
+
+	// Roulette Wheel Selection C: Softmax Probability Selection
+	public Contract rouletteWheelSelectionC(List<Contract> mutuallyPreferred, List<Contract> preferredByA, List<Contract> preferredByB, Contract currentContract) {
+		if (mutuallyPreferred.isEmpty()) return currentContract;
+		double temperature = 1.0; // Can be tuned
+		List<Double> expScores = new ArrayList<>();
+		double sumExp = 0.0;
+		for (Contract contract : mutuallyPreferred) {
+			int rankA = preferredByA.indexOf(contract);
+			int rankB = preferredByB.indexOf(contract);
+			int score = 0;
+			if (rankA >= 0) score += (rankA + 1);
+			if (rankB >= 0) score += (rankB + 1);
+			// Lower score = better, so use negative for softmax
+			double expScore = Math.exp(-score / temperature);
+			expScores.add(expScore);
+			sumExp += expScore;
+		}
+		double randVal = Math.random() * sumExp;
+		double cumulative = 0.0;
+		for (int i = 0; i < mutuallyPreferred.size(); i++) {
+			cumulative += expScores.get(i);
+			if (cumulative >= randVal) {
+				return mutuallyPreferred.get(i);
+			}
+		}
+		return currentContract;
+	}
+
 
 
 }

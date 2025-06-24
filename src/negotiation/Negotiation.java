@@ -5,7 +5,6 @@ import agents.CustomerAdvanced;
 import agents.SupplierAgent;
 import out.CsvOutputStrategy;
 import out.OutputStrategy;
-import out.PrintOutputStrategy;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -13,18 +12,18 @@ import java.util.*;
 
 
 // DO NOT USE EVALUATE-FUNCTIONS OF AGENTS WITHIN MEDIATOR OR NEGOTIATION!
-// THESE OBLECTIVE-VALUES ARE NOT AVAILABLE IN REAL NEGOTIATIONS!!!!!!!!!!!!!!!!!!!!  
+// THESE OBJECTIVE-VALUES ARE NOT AVAILABLE IN REAL NEGOTIATIONS!!!!!!!!!!!!!!!!!!!!
 // IT IS ONLY ALLOWED TO PRINT THESE OBJECTIVE-VALUES IN THE CONSOLE FOR ANALYZING REASONS
 
 public class Negotiation {
 		//Parameter of negotiation
-		public static int maxRounds = 100_000;
-		public static int populationSize = 10;
+		public static int maxRounds = 1_000_000;
+		public static int populationSize = 15;
 
-		public static OutputStrategy out = new CsvOutputStrategy("data/bitflip_100_10_test_1.csv");
+		public static OutputStrategy out = new CsvOutputStrategy("data/refinement_test.csv");
 		
 		public static void main(String[] args) {
-			int[] contract, proposal;
+			Contract contract, proposal;
 			Agent agA, agB;
 			Mediator med;
 			boolean voteA, voteB;
@@ -59,13 +58,13 @@ public class Negotiation {
 						agA       = new SupplierAgent(new File(inSu200[i]));
 						agB       = new CustomerAdvanced(new File(inCu200[j]));
 						med       = new Mediator(agA.getContractSize(), agB.getContractSize());
-						contract  = med.initContract();
-						int [] contractA = med.initContract();
-						int [] contractB = med.initContract();
-						out.output(agA, agB, 0, contract);
+						contract = new Contract(med.initContract());
+						Contract contractA = new Contract(med.initContract());
+						Contract contractB = new Contract(med.initContract());
+						out.output(agA, agB, 0, contract.contract, contract.mutationType);
 						
 						for(int round=1;round<maxRounds;round++) {
-							List<int[]> population;
+							List<Contract> population;
 							if(round == 1) {
 								population = med.generatePopulation(contract, 10);
 							}
@@ -73,13 +72,13 @@ public class Negotiation {
 								population = med.generatePopulationFromContracts(contract, contractA, contractB, 10);
 							}
 
-							List<int[]> preferredByA = new ArrayList<>();
-							List<int[]> preferredByB = new ArrayList<>();
+							List<Contract> preferredByA = new ArrayList<>();
+							List<Contract> preferredByB = new ArrayList<>();
 
 							//Narrow down the contracts to those that are better than the current solution for each agent
-							for (int[] candidate : population) {
-								if (agA.vote(contract, candidate)) preferredByA.add(candidate);
-								if (agB.vote(contract, candidate)) preferredByB.add(candidate);
+							for (Contract candidate : population) {
+								if (agA.vote(contract.contract, candidate.contract)) preferredByA.add(candidate);
+								if (agB.vote(contract.contract, candidate.contract)) preferredByB.add(candidate);
 							}
 
 							if(preferredByA.isEmpty() && preferredByB.isEmpty()){
@@ -92,33 +91,33 @@ public class Negotiation {
 
 							// Rank preferredByA using agent A's votes
 							preferredByA.sort((c1, c2) -> {
-								if (Arrays.equals(c1, c2)) return 0;
-								return agentA.vote(c2, c1) ? -1 : 1; // If agent A prefers c1 over c2, c1 comes first
+								if (Arrays.equals(c1.contract, c2.contract)) return 0;
+								return agentA.vote(c2.contract, c1.contract) ? -1 : 1; // If agent A prefers c1 over c2, c1 comes first
 							});
 
 							// Rank preferredByB using agent B's votes
 							preferredByB.sort((c1, c2) -> {
-								if (Arrays.equals(c1, c2)) return 0;
-								return agentB.vote(c2, c1) ? -1 : 1; // If agent B prefers c1 over c2, c1 comes first
+								if (Arrays.equals(c1.contract, c2.contract)) return 0;
+								return agentB.vote(c2.contract, c1.contract) ? -1 : 1; // If agent B prefers c1 over c2, c1 comes first
 							});
 
 							if(!preferredByA.isEmpty()) contractA = preferredByA.getFirst();
 							if(!preferredByB.isEmpty()) contractB = preferredByB.getFirst();
 
-							List<int[]> mutuallyPreferred = preferredByA.stream()
-									.filter(a -> preferredByB.stream().anyMatch(b -> Arrays.equals(a, b)))
+							List<Contract> mutuallyPreferred = preferredByA.stream()
+									.filter(a -> preferredByB.stream().anyMatch(b -> Arrays.equals(a.contract, b.contract)))
 									.toList();
 
-							proposal = med.rouletteWheelSelectionB(mutuallyPreferred, preferredByA, preferredByB, contract);
+							proposal = med.rouletteWheelSelectionC(mutuallyPreferred, preferredByA, preferredByB, contract);
 
 							//System.out.println("Selecting proposal using roulette wheel...");
 							//proposal = med.rouletteWheelSelection(preferredByA, preferredByB);
 
-							voteA    = agA.vote(contract, proposal);            //Autonomie + Private Infos
-							voteB    = agB.vote(contract, proposal);
+							voteA    = agA.vote(contract.contract, proposal.contract);            //Autonomie + Private Infos
+							voteB    = agB.vote(contract.contract, proposal.contract);
 							if(voteA && voteB ) {
 								contract = proposal;
-								out.output(agA, agB, round, contract);
+								out.output(agA, agB, round, contract.contract, contract.mutationType);
 							}
 //							else{
 //								System.out.println(round + " solution not selected this round");
